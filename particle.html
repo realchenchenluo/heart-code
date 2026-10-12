@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#040105">
+<title>粒子爱心 · 旋转无尽的真心</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='88'%3E%F0%9F%92%97%3C/text%3E%3C/svg%3E">
+<style>
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    overflow:hidden;background:#040105;color:#fff;
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+    -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
+  }
+  #c{position:fixed;inset:0;display:block;touch-action:none}
+  .cap{
+    position:fixed;left:0;right:0;top:44%;transform:translateY(-50%);text-align:center;pointer-events:none;
+    font-size:clamp(18px,4vw,40px);font-weight:300;letter-spacing:.26em;text-indent:.26em;
+    color:#ffdceb;
+    text-shadow:0 0 16px rgba(255,90,150,.9),0 0 42px rgba(255,40,110,.6),0 0 90px rgba(255,20,90,.35);
+    transition:opacity .35s;
+  }
+  .top{position:fixed;top:16px;left:20px;font-size:12px;letter-spacing:.16em;color:rgba(255,255,255,.38);pointer-events:none}
+  .hud{
+    position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:10;
+    display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px 16px;
+    width:min(94vw,760px);padding:12px 18px;border-radius:18px;
+    background:rgba(24,10,20,.62);border:1px solid rgba(255,120,170,.22);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    box-shadow:0 12px 40px rgba(0,0,0,.5);font-size:13px;
+  }
+  .hud label{display:flex;align-items:center;gap:7px;color:#f0c9dc;white-space:nowrap}
+  .hud input[type=range]{width:104px;accent-color:#ff5f9e;height:16px}
+  .hud b{font-weight:500;color:#fff;min-width:2.6em;text-align:right;font-variant-numeric:tabular-nums}
+  .hud .seg{display:flex;gap:4px;padding:3px;border-radius:999px;background:rgba(255,255,255,.06)}
+  .hud .seg button{
+    padding:4px 11px;border-radius:999px;border:0;cursor:pointer;font-family:inherit;font-size:12px;
+    background:transparent;color:#e6b9cd;
+  }
+  .hud .seg button.on{background:rgba(255,95,158,.85);color:#fff}
+  .hud input[type=checkbox]{accent-color:#ff5f9e;width:15px;height:15px}
+  .hud .txt{
+    width:8.5em;padding:6px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.18);
+    background:rgba(255,255,255,.07);color:#fff;font-size:13px;outline:none;font-family:inherit;
+  }
+  .hud .txt:focus{border-color:rgba(255,95,158,.75)}
+  .hud a{color:#c99bb0;text-decoration:none;white-space:nowrap}
+  .hud a:hover{color:#fff}
+  body.preview .hud,body.preview .top{display:none}
+  body.preview .cap{bottom:5vh}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="top">粒子爱心 · 旋转无尽的真心</div>
+<div class="cap" id="cap">万事胜意</div>
+
+<div class="hud">
+  <label>粒子 <input id="cnt" type="range" min="1200" max="9000" step="200" value="4800"><b id="cntv">4800</b></label>
+  <label>转速 <input id="spd" type="range" min="0" max="120" step="1" value="30"><b id="spdv">0.30</b></label>
+  <span class="seg" id="seg">
+    <button data-th="pink" class="on">粉</button>
+    <button data-th="rainbow">彩虹</button>
+    <button data-th="ice">冰蓝</button>
+    <button data-th="gold">鎏金</button>
+  </span>
+  <label><input id="beat" type="checkbox" checked>心跳</label>
+  <input id="msg" class="txt" value="万事胜意" maxlength="14" aria-label="想说的话">
+  <a href="./">返回</a>
+</div>
+
+<script>
+(function(){
+  var PREVIEW = new URLSearchParams(location.search).has('preview');
+  if (PREVIEW) document.body.classList.add('preview');
+
+  var cv  = document.getElementById('c');
+  var ctx = cv.getContext('2d', {alpha:false});
+  var cap = document.getElementById('cap');
+
+  var TILT = -0.17;          // 绕 X 轴轻微倾斜，更有立体感
+  var FOV  = 60;             // 透视相机距离（单位制）
+  var ZT   = 3.4;            // 心的最大厚度
+  var NB   = 16;             // 深度分档数
+  var REP  = 150;            // 鼠标斥力半径（css px）
+
+  var W = 0, H = 0, DPR = 1, U = 20, cx = 0, cy = 0;
+  var P = [];
+  var ang = 0, last = performance.now();
+  var speed = PREVIEW ? 0.22 : 0.30;
+  var beatOn = true, theme = 'pink';
+  var PAL = [], GLOW = null;
+  var BLOOM = 'rgba(255,196,224,0.05)';
+  var pointer = {x:0, y:0, on:false};
+
+  var THEMES = {
+    pink:    {h:336, sp:36, sat:100},
+    rainbow: {rain:true, sat:96},
+    ice:     {h:196, sp:46, sat:92},
+    gold:    {h:44,  sp:22, sat:100}
+  };
+  var ALPHA_MUL = [1, 0.62, 0.45];
+
+  // 心形参数方程（+2 让图形竖直居中）
+  function heart(t){
+    var s = Math.sin(t), c = Math.cos(t);
+    return [16*s*s*s, 13*c - 5*Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t) + 2];
+  }
+
+  // 按弧长取点。参数 t 均匀采样时，顶部凹陷与底部心尖附近 x 是 t 的三次方，
+  // 大量粒子会挤在 x≈0 上，正中间出现一条竖直亮线。
+  var ARC_N = 2000, ARC_PX = null, ARC_PY = null, ARC_CUM = null, ARC_TOTAL = 0;
+  function buildArc(){
+    ARC_PX = new Float64Array(ARC_N+1);
+    ARC_PY = new Float64Array(ARC_N+1);
+    ARC_CUM = new Float64Array(ARC_N+1);
+    for (var k=0; k<=ARC_N; k++){
+      var h = heart(k/ARC_N * Math.PI*2);
+      ARC_PX[k] = h[0]; ARC_PY[k] = h[1];
+      if (k > 0){
+        var dx = ARC_PX[k]-ARC_PX[k-1], dy = ARC_PY[k]-ARC_PY[k-1];
+        ARC_CUM[k] = ARC_CUM[k-1] + Math.sqrt(dx*dx + dy*dy);
+      }
+    }
+    ARC_TOTAL = ARC_CUM[ARC_N];
+  }
+  function heartAtArc(s){
+    s = ((s % ARC_TOTAL) + ARC_TOTAL) % ARC_TOTAL;
+    var lo = 0, hi = ARC_N;
+    while (lo < hi-1){
+      var mid = (lo + hi) >> 1;
+      if (ARC_CUM[mid] <= s) lo = mid; else hi = mid;
+    }
+    var seg = ARC_CUM[hi] - ARC_CUM[lo] || 1;
+    var f = (s - ARC_CUM[lo]) / seg;
+    return [ARC_PX[lo] + (ARC_PX[hi]-ARC_PX[lo])*f, ARC_PY[lo] + (ARC_PY[hi]-ARC_PY[lo])*f];
+  }
+
+  function buildPalette(){
+    var T = THEMES[theme];
+    PAL = [];
+    for (var lv=0; lv<3; lv++){
+      var rows = [];
+      for (var i=0; i<12; i++){
+        var hue = T.rain ? (i/12)*360 : T.h + (i/12 - 0.5)*T.sp;
+        var row = [];
+        for (var b=0; b<NB; b++){
+          var d   = b/(NB-1);
+          var lum = Math.round(40 + 56*d);
+          var sat = Math.round(T.sat * (0.62 + 0.38*d));
+          var al  = (0.30 + 0.70*d) * ALPHA_MUL[lv];
+          row.push('hsla(' + hue.toFixed(0) + ',' + sat + '%,' + lum + '%,' + al.toFixed(3) + ')');
+        }
+        rows.push(row);
+      }
+      PAL.push(rows);
+    }
+    var gh = T.rain ? 330 : T.h;
+    GLOW = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W,H)*0.45);
+    GLOW.addColorStop(0,   'hsla(' + gh + ',100%,58%,0.055)');
+    GLOW.addColorStop(0.5, 'hsla(' + gh + ',100%,45%,0.022)');
+    GLOW.addColorStop(1,   'hsla(' + gh + ',100%,40%,0)');
+  }
+
+  function hueIdxFor(p){
+    if (THEMES[theme].rain){
+      var i = Math.floor((p.t/(Math.PI*2))*12);
+      return i < 0 ? 0 : (i > 11 ? 11 : i);
+    }
+    return Math.floor(Math.random()*12);
+  }
+
+  function make(n){
+    P = new Array(n);
+    for (var i=0; i<n; i++){
+      var s  = Math.random()*ARC_TOTAL;
+      var hp = heartAtArc(s);
+      var u  = Math.random();
+      var r, k, size;
+
+      if (u < 0.56){                    // 外表面
+        k = 0; r = 0.90 + 0.10*Math.random(); size = 0.09 + Math.random()*0.11;
+      } else if (u < 0.87){             // 内部云
+        k = 1; r = Math.pow(Math.random(), 0.6) * 0.88; size = 0.07 + Math.random()*0.08;
+      } else {                          // 外围星尘
+        k = 2; r = 1.0 + Math.random()*0.7; size = 0.05 + Math.random()*0.06;
+      }
+
+      var thick = ZT * Math.sqrt(Math.max(0, 1 - r*r));
+      var z;
+      if (k === 2){
+        z = (Math.random()*2 - 1) * ZT * 1.7;
+      } else if (k === 0){
+        z = (Math.random() < 0.5 ? -1 : 1) * thick * (0.78 + 0.22*Math.random())
+            + (Math.random()*2 - 1) * 0.35;
+      } else {
+        z = (Math.random()*2 - 1) * thick;
+      }
+
+      var p = {x: hp[0]*r, y: hp[1]*r, z: z, s: size, k: k, t: (s/ARC_TOTAL)*Math.PI*2,
+               hi: 0, ox: 0, oy: 0, sx: 0, sy: 0};
+      p.hi = hueIdxFor(p);
+      P[i] = p;
+    }
+  }
+
+  function layout(){
+    DPR = Math.min(PREVIEW ? 1.5 : 2, window.devicePixelRatio || 1);
+    var vw = innerWidth, vh = innerHeight;
+    W = cv.width  = Math.max(1, Math.floor(vw*DPR));
+    H = cv.height = Math.max(1, Math.floor(vh*DPR));
+    cv.style.width  = vw + 'px';
+    cv.style.height = vh + 'px';
+    var heartW = PREVIEW ? Math.min(vw*0.80, vh*0.74)
+                         : Math.min(vw*(vw < 700 ? 0.86 : 0.62), vh*0.78);
+    U  = heartW/32 * DPR;
+    cx = W/2;
+    cy = H*(PREVIEW ? 0.46 : (vw < 700 ? 0.46 : 0.44));
+    buildPalette();
+  }
+
+  function draw(now){
+    var dt = Math.min(0.05, (now - last)/1000); last = now;
+    ang += speed * dt;
+
+    var bs = 1;
+    if (beatOn){
+      var x  = ((now/1000) % 1.15)/1.15;
+      var g1 = Math.exp(-Math.pow((x-0.10)/0.050, 2));
+      var g2 = Math.exp(-Math.pow((x-0.30)/0.055, 2));
+      bs = 1 + 0.045*(g1 + 0.55*g2);
+    }
+
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = 'rgba(4,1,5,0.26)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'lighter';
+    if (GLOW){ ctx.fillStyle = GLOW; ctx.fillRect(0, 0, W, H); }
+
+    var ca = Math.cos(ang), sa = Math.sin(ang);
+    var ct = Math.cos(TILT), st = Math.sin(TILT);
+    var on = pointer.on, mx = pointer.x, my = pointer.y, rep = REP*DPR;
+
+    for (var i=0; i<P.length; i++){
+      var p  = P[i];
+      var X  = p.x*ca + p.z*sa;
+      var Z  = p.z*ca - p.x*sa;
+      var Y2 = p.y*ct - Z*st;
+      var Z2 = p.y*st + Z*ct;
+      var persp = FOV/(FOV + Z2);
+
+      var sx = cx + X*bs*U*persp + p.ox;
+      var sy = cy - Y2*bs*U*persp + p.oy;
+      p.sx = sx; p.sy = sy;
+
+      if (p.ox !== 0 || p.oy !== 0){
+        p.ox *= 0.90; p.oy *= 0.90;
+        if (Math.abs(p.ox) < 0.01) p.ox = 0;
+        if (Math.abs(p.oy) < 0.01) p.oy = 0;
+      }
+      if (on){
+        var dx = sx - mx, dy = sy - my, d2 = dx*dx + dy*dy;
+        if (d2 < rep*rep){
+          var dd = Math.sqrt(d2) || 1;
+          var f  = (1 - dd/rep) * 7;
+          p.ox += dx/dd*f;
+          p.oy += dy/dd*f;
+        }
+      }
+
+      var d  = 0.5 - Z2/34;
+      d = d < 0 ? 0 : (d > 1 ? 1 : d);
+      var s  = p.s * U * persp;
+      if (s < 1) s = 1;
+
+      ctx.fillStyle = PAL[p.k][p.hi][(d*(NB-1))|0];
+      ctx.fillRect(sx - s*0.5, sy - s*0.5, s, s);
+
+      if (d > 0.88 && s > 2.4){
+        ctx.fillStyle = BLOOM;
+        ctx.fillRect(sx - s*1.6, sy - s*1.6, s*3.2, s*3.2);
+      }
+    }
+    requestAnimationFrame(draw);
+  }
+
+  /* ---------- 交互 ---------- */
+  function bindPointer(){
+    if (PREVIEW) return;
+    addEventListener('pointermove', function(e){
+      pointer.on = true;
+      pointer.x = e.clientX*DPR;
+      pointer.y = e.clientY*DPR;
+    }, {passive:true});
+    addEventListener('pointerleave', function(){ pointer.on = false; });
+    addEventListener('pointerdown', function(e){
+      var mx = e.clientX*DPR, my = e.clientY*DPR, R = 260*DPR;
+      for (var i=0; i<P.length; i++){
+        var p = P[i];
+        var dx = p.sx - mx, dy = p.sy - my;
+        var d  = Math.sqrt(dx*dx + dy*dy) || 1;
+        var f  = Math.max(0, 1 - d/R) * 22;
+        p.ox += dx/d*f;
+        p.oy += dy/d*f;
+      }
+    }, {passive:true});
+  }
+
+  var cntEl = document.getElementById('cnt'), cntv = document.getElementById('cntv');
+  var spdEl = document.getElementById('spd'), spdv = document.getElementById('spdv');
+  var msgEl = document.getElementById('msg');
+  var beatEl = document.getElementById('beat');
+  var segEl = document.getElementById('seg');
+
+  var defaultCount = PREVIEW ? 1400 : (innerWidth < 700 ? 2600 : 4800);
+  cntEl.value = defaultCount; cntv.textContent = defaultCount;
+
+  var cntTimer = null;
+  cntEl.addEventListener('input', function(){
+    cntv.textContent = cntEl.value;
+    clearTimeout(cntTimer);
+    cntTimer = setTimeout(function(){ make(parseInt(cntEl.value, 10)); }, 220);
+  });
+  spdEl.addEventListener('input', function(){
+    speed = spdEl.value/100;
+    spdv.textContent = speed.toFixed(2);
+  });
+  beatEl.addEventListener('change', function(){ beatOn = beatEl.checked; });
+  msgEl.addEventListener('input', function(){
+    cap.textContent = msgEl.value.trim().slice(0, 14);
+  });
+  segEl.addEventListener('click', function(e){
+    var b = e.target.closest('button');
+    if (!b) return;
+    theme = b.getAttribute('data-th');
+    Array.prototype.forEach.call(segEl.children, function(el){ el.classList.toggle('on', el === b); });
+    for (var i=0; i<P.length; i++) P[i].hi = hueIdxFor(P[i]);
+    buildPalette();
+  });
+
+  var rt = null;
+  addEventListener('resize', function(){
+    clearTimeout(rt);
+    rt = setTimeout(function(){ layout(); }, 180);
+  });
+
+  buildArc();
+  layout();
+  make(defaultCount);
+  bindPointer();
+  requestAnimationFrame(draw);
+})();
+</script>
+</body>
+</html>

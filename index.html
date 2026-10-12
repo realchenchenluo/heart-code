@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0a0a12">
+<title>爱心代码 · 两枚</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='88'%3E%F0%9F%92%97%3C/text%3E%3C/svg%3E">
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    min-height:100%;background:#0a0a12;color:#e9ecf5;
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+    background-image:
+      radial-gradient(circle at 20% -10%, rgba(255,80,140,.16), rgba(10,10,18,0) 55%),
+      radial-gradient(circle at 85% 5%, rgba(90,120,220,.16), rgba(10,10,18,0) 50%),
+      radial-gradient(rgba(255,255,255,.045) 1px, rgba(0,0,0,0) 1px);
+    background-size:100% 100%,100% 100%,26px 26px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1040px;margin:0 auto;padding:56px 22px 64px}
+  header{text-align:center;margin-bottom:38px}
+  h1{
+    margin:0 0 12px;font-size:clamp(26px,5vw,42px);font-weight:600;letter-spacing:.04em;
+    background:linear-gradient(100deg,#ffd3e4,#ff7fb3 40%,#a9c4ff);-webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  header p{margin:0;color:#8b96ad;font-size:14px;line-height:1.9}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  @media (max-width:820px){.grid{grid-template-columns:1fr}}
+  .card{
+    display:block;text-decoration:none;color:inherit;border-radius:18px;overflow:hidden;
+    background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.09);
+    box-shadow:0 18px 50px rgba(0,0,0,.45);
+    transition:transform .28s cubic-bezier(.2,.8,.2,1),border-color .28s,box-shadow .28s;
+  }
+  .card:hover{transform:translateY(-6px);border-color:rgba(255,120,170,.45);box-shadow:0 26px 60px rgba(255,60,120,.18)}
+  .frame{position:relative;aspect-ratio:4/3;background:#05050a;overflow:hidden}
+  .frame iframe{
+    position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none;display:block;
+  }
+  .meta{padding:16px 20px 20px;display:flex;align-items:flex-start;gap:12px}
+  .meta .num{
+    flex:none;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
+    background:rgba(255,95,158,.16);color:#ff9dc4;font-size:13px;border:1px solid rgba(255,95,158,.3)
+  }
+  .meta h2{margin:0 0 6px;font-size:17px;font-weight:600;letter-spacing:.03em}
+  .meta p{margin:0;color:#8b96ad;font-size:13px;line-height:1.75}
+  .meta .go{margin-left:auto;color:#ff9dc4;font-size:13px;white-space:nowrap;padding-top:4px}
+  footer{margin-top:40px;text-align:center;color:#5d6880;font-size:12.5px;line-height:2}
+  footer a{color:#93a0b8;text-decoration:none;border-bottom:1px dotted rgba(147,160,184,.5)}
+  footer a:hover{color:#fff}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>爱心代码 · 两枚</h1>
+    <p>一颗由弹窗拼成，一颗由粒子构成。<br>点开任意一颗，把想说的话写在中间。</p>
+  </header>
+
+  <div class="grid">
+    <a class="card" href="./popup.html">
+      <div class="frame"><iframe src="./popup.html?preview=1" loading="lazy" title="弹窗爱心预览" scrolling="no"></iframe></div>
+      <div class="meta">
+        <span class="num">01</span>
+        <div>
+          <h2>弹窗爱心</h2>
+          <p>近百个 Windows 弹窗沿着心形曲线排成一圈，会跳动、会重拼，中间那扇窗口写着你输入的话。</p>
+        </div>
+        <span class="go">打开 →</span>
+      </div>
+    </a>
+
+    <a class="card" href="./particle.html">
+      <div class="frame"><iframe src="./particle.html?preview=1" loading="lazy" title="粒子爱心预览" scrolling="no"></iframe></div>
+      <div class="meta">
+        <span class="num">02</span>
+        <div>
+          <h2>粒子爱心</h2>
+          <p>数千颗粒子在三维空间里组成的真心，缓缓旋转、按心跳起伏，鼠标划过会散开，点击会炸开。</p>
+        </div>
+        <span class="go">打开 →</span>
+      </div>
+    </a>
+  </div>
+
+  <footer>
+    纯静态网页 · 无依赖 · 直接部署在 GitHub Pages<br>
+    <a href="https://github.com/realchenchenluo/heart-code" target="_blank" rel="noopener">GitHub 仓库</a>
+  </footer>
+</div>
+</body>
+</html>
