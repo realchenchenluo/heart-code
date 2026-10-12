@@ -236,13 +236,26 @@
     el.style.setProperty('--tbh', tbh.toFixed(1) + 'px');
     el.style.setProperty('--g', Math.max(2.5, w*0.045).toFixed(1) + 'px');
     el.style.setProperty('--dot', Math.max(2.4, h*0.075).toFixed(1) + 'px');
-    el.style.setProperty('--fs', Math.max(7, h*0.26).toFixed(1) + 'px');
+    el.style.setProperty('--fs', Math.max(7, h*0.23).toFixed(1) + 'px');
     el.style.setProperty('--fs2', Math.max(6, h*0.16).toFixed(1) + 'px');
     el.style.marginLeft = (-w/2).toFixed(1) + 'px';
     el.style.marginTop  = (-h/2).toFixed(1) + 'px';
     el.innerHTML = '<div class="tb"><span class="dots"><i></i><i></i><i></i></span>' +
                    '<span class="tl">&#9829;</span></div><div class="bd"></div>';
     return el;
+  }
+  // 洗牌发色：每种颜色均匀出现，但相邻两扇不会撞色（视频里的配色就是随机跳的）
+  function shuffledPalette(n){
+    var bag = [];
+    while (bag.length < n){
+      var chunk = PALETTE.slice();
+      for (var i=chunk.length-1; i>0; i--){
+        var j = Math.floor(Math.random()*(i+1)), t = chunk[i];
+        chunk[i] = chunk[j]; chunk[j] = t;
+      }
+      bag = bag.concat(chunk);
+    }
+    return bag.slice(0, n);
   }
   function paint(rec, pal){
     rec.bd.style.setProperty('--c1', pal[0]);
@@ -258,57 +271,49 @@
     cy = Math.round(vh/2 - (PREVIEW ? 0 : vh*0.015));
 
     var w = baseW = Math.max(26, 4.4*S);
-    var h = baseH = Math.max(15, 2.4*S);
-    // 两圈窗口铺出有厚度的带子。每圈按「间距 ≈ 0.55 个窗口宽」来定数量：
-    // 重叠太多的话每扇只剩一条缝，写在上面的字就全被压住了。
-    var perRing = Math.max(9, Math.round(ARC_TOTAL * S / (w * 0.55)));
-    if (PREVIEW) perRing = Math.min(perRing, 16);
+    var h = baseH = Math.max(15, 2.8*S);
+    // 一圈窗口沿着心形曲线叠过去（视频里就是 heart_points(100) 一个点一个窗口）。
+    // 数量按「间距 ≈ 0.26 个窗口宽」来定，和视频里那 100 个的疏密程度相当，
+    // 露出来的那一条刚好能看清两三个字。
+    var N = Math.max(18, Math.round(ARC_TOTAL * S / (w * 0.26)));
+    if (PREVIEW) N = Math.min(N, 34);
 
     stage.innerHTML = '';
     heart = []; storm = []; all = [];
     var frag = document.createDocumentFragment();
     var idx = 0;
+    var bag = shuffledPalette(N);
 
-    for (var ring=0; ring<2; ring++){
-      var step = ARC_TOTAL / perRing, half = step * 0.22, gap = step * 0.58;
-      var offBase = (ring ? 1 : -1) * h * 0.48;
+    var step = ARC_TOTAL / N, half = step * 0.22, gap = step * 0.58;
 
-      for (var i=0; i<perRing; i++){
-        var s = (i + 0.5 + (ring ? 0.5 : 0)) * step;
-        var cuspDist = Math.min(Math.min(s, ARC_TOTAL - s), Math.abs(s - ARC_TOTAL/2));
-        if (cuspDist < gap) continue;
-        var pt = atArc(s);
-        var px = cx + pt[0]*S, py = cy - pt[1]*S;
+    for (var i=0; i<N; i++){
+      var s = (i + 0.5) * step;
+      var cuspDist = Math.min(Math.min(s, ARC_TOTAL - s), Math.abs(s - ARC_TOTAL/2));
+      if (cuspDist < gap) continue;
+      var pt = atArc(s);
+      var px = cx + pt[0]*S, py = cy - pt[1]*S;
 
-        var a = atArc(s - half), b = atArc(s + half);
-        var rad = Math.atan2(-(b[1]-a[1]), (b[0]-a[0]));
+      var a = atArc(s - half), b = atArc(s + half);
+      var rad = Math.atan2(-(b[1]-a[1]), (b[0]-a[0]));
 
-        // 尖点附近曲线陡、两条分支又贴得近，两圈窗口会在那里交叉成一堆。
-        // 越靠近尖点：窗口缩得越小、两圈越往中线并拢，像丝带收口。
-        var near = Math.exp(-Math.pow(cuspDist/(step*2.2), 2));
-        if (ring === 1 && near > 0.72) continue;
-
-        var nx = -Math.sin(rad), ny = Math.cos(rad);
-        if (nx*(cx-px) + ny*(cy-py) < 0){ nx = -nx; ny = -ny; }
-        var off = offBase * (1 - 0.85*near);
-        var tx = px + nx*off, ty = py + ny*off;
-
-        var k = 1 - 0.30 * near;
-        var el = makeWin(w*k, h*k);
-        var rec = {
-          el: el, bd: el.querySelector('.bd'),
-          hx: tx, hy: ty, hrot: rad * 180/Math.PI, hsc: 1,
-          sx: 0, sy: 0, srot: 0, ssc: 1,
-          ph: Math.random()*6.283, delay: 0, stormDelay: Math.random()*0.5,
-          bow: 1, spin: (Math.random()*2-1), hover: false, op: -1, hot: false,
-          storm: false, main: false
-        };
-        rec.delay = placeStart + heart.length * placeDt;
-        rec.i = idx++;
-        el.addEventListener('mouseenter', function(){ rec.hover = true; });
-        el.addEventListener('mouseleave', function(){ rec.hover = false; });
-        heart.push(rec); all.push(rec); frag.appendChild(el);
-      }
+      // 尖点附近曲线很陡，整扇窗口摆在那里会有半个身子探进空腔，
+      // 越靠近尖点缩得越小，像丝带在急转弯处收窄。
+      var near = Math.exp(-Math.pow(cuspDist/(step*2.2), 2));
+      var k = 1 - 0.30 * near;
+      var el = makeWin(w*k, h*k);
+      var rec = {
+        el: el, bd: el.querySelector('.bd'), pal: bag[i],
+        hx: px, hy: py, hrot: rad * 180/Math.PI, hsc: 1,
+        sx: 0, sy: 0, srot: 0, ssc: 1,
+        ph: Math.random()*6.283, delay: 0, stormDelay: Math.random()*0.5,
+        bow: 1, spin: (Math.random()*2-1), hover: false, op: -1, hot: false,
+        storm: false, main: false
+      };
+      rec.delay = placeStart + heart.length * placeDt;
+      rec.i = idx++;
+      el.addEventListener('mouseenter', function(){ rec.hover = true; });
+      el.addEventListener('mouseleave', function(){ rec.hover = false; });
+      heart.push(rec); all.push(rec); frag.appendChild(el);
     }
 
     // 中间那扇主窗口
@@ -349,7 +354,7 @@
     }
     layoutStorm(vw, vh, w, h);
     for (var q=0; q<heart.length; q++){
-      if (!heart[q].main) paint(heart[q], PALETTE[heart[q].i % PALETTE.length]);
+      if (!heart[q].main) paint(heart[q], heart[q].pal);
       heart[q].el.style.zIndex = String(10 + q);
     }
     for (var r=0; r<storm.length; r++) storm[r].el.style.zIndex = String(10 + heart.length + r);
