@@ -15,18 +15,11 @@
     -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
   }
   #c{position:fixed;inset:0;display:block;touch-action:none}
-  .cap{
-    position:fixed;left:0;right:0;top:44%;transform:translateY(-50%);text-align:center;pointer-events:none;
-    font-size:clamp(18px,4vw,40px);font-weight:300;letter-spacing:.26em;text-indent:.26em;
-    color:#ffdceb;
-    text-shadow:0 0 16px rgba(255,90,150,.9),0 0 42px rgba(255,40,110,.6),0 0 90px rgba(255,20,90,.35);
-    transition:opacity .35s;
-  }
-  .top{position:fixed;top:16px;left:20px;font-size:12px;letter-spacing:.16em;color:rgba(255,255,255,.38);pointer-events:none}
+  .top{position:fixed;top:16px;left:20px;font-size:12px;letter-spacing:.16em;color:rgba(255,255,255,.36);pointer-events:none}
   .hud{
     position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:10;
     display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px 16px;
-    width:min(94vw,760px);padding:12px 18px;border-radius:18px;
+    width:min(94vw,720px);padding:12px 18px;border-radius:18px;
     background:rgba(24,10,20,.62);border:1px solid rgba(255,120,170,.22);
     backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
     box-shadow:0 12px 40px rgba(0,0,0,.5);font-size:13px;
@@ -41,21 +34,14 @@
   }
   .hud .seg button.on{background:rgba(255,95,158,.85);color:#fff}
   .hud input[type=checkbox]{accent-color:#ff5f9e;width:15px;height:15px}
-  .hud .txt{
-    width:8.5em;padding:6px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.18);
-    background:rgba(255,255,255,.07);color:#fff;font-size:13px;outline:none;font-family:inherit;
-  }
-  .hud .txt:focus{border-color:rgba(255,95,158,.75)}
   .hud a{color:#c99bb0;text-decoration:none;white-space:nowrap}
   .hud a:hover{color:#fff}
   body.preview .hud,body.preview .top{display:none}
-  body.preview .cap{bottom:5vh}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
 <div class="top">粒子爱心 · 旋转无尽的真心</div>
-<div class="cap" id="cap">万事胜意</div>
 
 <div class="hud">
   <label>粒子 <input id="cnt" type="range" min="1200" max="9000" step="200" value="4800"><b id="cntv">4800</b></label>
@@ -67,7 +53,6 @@
     <button data-th="gold">鎏金</button>
   </span>
   <label><input id="beat" type="checkbox" checked>心跳</label>
-  <input id="msg" class="txt" value="万事胜意" maxlength="14" aria-label="想说的话">
   <a href="./">返回</a>
 </div>
 
@@ -78,22 +63,23 @@
 
   var cv  = document.getElementById('c');
   var ctx = cv.getContext('2d', {alpha:false});
-  var cap = document.getElementById('cap');
 
-  var TILT = -0.17;          // 绕 X 轴轻微倾斜，更有立体感
+  var TILT = -0.17;          // 绕 X 轴轻微倾斜
   var FOV  = 60;             // 透视相机距离（单位制）
   var ZT   = 3.4;            // 心的最大厚度
-  var NB   = 16;             // 深度分档数
+  var NDB  = 6;              // 深度分档
+  var SPRN = 24;             // 辉光贴图尺寸
   var REP  = 150;            // 鼠标斥力半径（css px）
+  var BEAT_LEN = 1.05;       // 一次心跳的周期（秒）
 
   var W = 0, H = 0, DPR = 1, U = 20, cx = 0, cy = 0;
   var P = [];
   var ang = 0, last = performance.now();
   var speed = PREVIEW ? 0.22 : 0.30;
   var beatOn = true, theme = 'pink';
-  var PAL = [], GLOW = null;
-  var BLOOM = 'rgba(255,196,224,0.05)';
+  var SPR = [], GLOW = null;
   var pointer = {x:0, y:0, on:false};
+  var puffPending = 0, prevBeat = 0;
 
   var THEMES = {
     pink:    {h:336, sp:36, sat:100},
@@ -101,7 +87,7 @@
     ice:     {h:196, sp:46, sat:92},
     gold:    {h:44,  sp:22, sat:100}
   };
-  var ALPHA_MUL = [1, 0.62, 0.45];
+  var ALPHA_MUL = [1, 0.6, 0.42];
 
   // 心形参数方程（+2 让图形竖直居中）
   function heart(t){
@@ -109,7 +95,7 @@
     return [16*s*s*s, 13*c - 5*Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t) + 2];
   }
 
-  // 按弧长取点。参数 t 均匀采样时，顶部凹陷与底部心尖附近 x 是 t 的三次方，
+  // 按弧长取点：参数 t 均匀采样时，尖点附近 x 是 t 的三次方，
   // 大量粒子会挤在 x≈0 上，正中间出现一条竖直亮线。
   var ARC_N = 2000, ARC_PX = null, ARC_PY = null, ARC_CUM = null, ARC_TOTAL = 0;
   function buildArc(){
@@ -138,29 +124,44 @@
     return [ARC_PX[lo] + (ARC_PX[hi]-ARC_PX[lo])*f, ARC_PY[lo] + (ARC_PY[hi]-ARC_PY[lo])*f];
   }
 
-  function buildPalette(){
+  // 每颗粒子用一张预渲染的辉光贴图来画（中心一个亮点、外圈拖一条光晕尾巴），
+  // 比直接 fillRect 亮得多，整颗心会自己发光。
+  function makeSprite(hue, sat, lum, alpha){
+    var c = document.createElement('canvas');
+    c.width = c.height = SPRN;
+    var g = c.getContext('2d');
+    var gr = g.createRadialGradient(SPRN/2, SPRN/2, 0, SPRN/2, SPRN/2, SPRN/2);
+    gr.addColorStop(0.00, 'hsla('+hue+','+sat+'%,'+Math.min(100,lum+12)+'%,'+alpha.toFixed(3)+')');
+    gr.addColorStop(0.16, 'hsla('+hue+','+sat+'%,'+lum+'%,'+(alpha*0.85).toFixed(3)+')');
+    gr.addColorStop(0.44, 'hsla('+hue+','+sat+'%,'+lum+'%,'+(alpha*0.22).toFixed(3)+')');
+    gr.addColorStop(1.00, 'hsla('+hue+','+sat+'%,'+lum+'%,0)');
+    g.fillStyle = gr;
+    g.fillRect(0, 0, SPRN, SPRN);
+    return c;
+  }
+
+  function buildSprites(){
     var T = THEMES[theme];
-    PAL = [];
-    for (var lv=0; lv<3; lv++){
+    SPR = [];
+    for (var k=0; k<3; k++){
       var rows = [];
       for (var i=0; i<12; i++){
         var hue = T.rain ? (i/12)*360 : T.h + (i/12 - 0.5)*T.sp;
         var row = [];
-        for (var b=0; b<NB; b++){
-          var d   = b/(NB-1);
-          var lum = Math.round(40 + 56*d);
+        for (var b=0; b<NDB; b++){
+          var d   = b/(NDB-1);
+          var lum = Math.round(42 + 54*d);
           var sat = Math.round(T.sat * (0.62 + 0.38*d));
-          var al  = (0.30 + 0.70*d) * ALPHA_MUL[lv];
-          row.push('hsla(' + hue.toFixed(0) + ',' + sat + '%,' + lum + '%,' + al.toFixed(3) + ')');
+          row.push(makeSprite(hue.toFixed(0), sat, lum, (0.26 + 0.60*d) * ALPHA_MUL[k]));
         }
         rows.push(row);
       }
-      PAL.push(rows);
+      SPR.push(rows);
     }
     var gh = T.rain ? 330 : T.h;
-    GLOW = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W,H)*0.45);
-    GLOW.addColorStop(0,   'hsla(' + gh + ',100%,58%,0.055)');
-    GLOW.addColorStop(0.5, 'hsla(' + gh + ',100%,45%,0.022)');
+    GLOW = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W,H)*0.46);
+    GLOW.addColorStop(0,   'hsla(' + gh + ',100%,58%,0.075)');
+    GLOW.addColorStop(0.5, 'hsla(' + gh + ',100%,45%,0.03)');
     GLOW.addColorStop(1,   'hsla(' + gh + ',100%,40%,0)');
   }
 
@@ -213,35 +214,49 @@
     H = cv.height = Math.max(1, Math.floor(vh*DPR));
     cv.style.width  = vw + 'px';
     cv.style.height = vh + 'px';
-    var heartW = PREVIEW ? Math.min(vw*0.80, vh*0.74)
-                         : Math.min(vw*(vw < 700 ? 0.86 : 0.62), vh*0.78);
+    var heartW = PREVIEW ? Math.min(vw*0.80, vh*0.72)
+                         : Math.min(vw*(vw < 700 ? 0.90 : 0.70), vh*0.80);
     U  = heartW/32 * DPR;
     cx = W/2;
-    cy = H*(PREVIEW ? 0.46 : (vw < 700 ? 0.46 : 0.44));
-    buildPalette();
+    cy = H*(PREVIEW ? 0.47 : (vw < 700 ? 0.45 : 0.47));
+    buildSprites();
+  }
+
+  // 一次心跳两声「咚·咚」，之后一段平息
+  function beatAt(t){
+    var x = (t % BEAT_LEN)/BEAT_LEN;
+    var d1 = (x-0.08)/0.045, d2 = (x-0.26)/0.050;
+    return Math.exp(-d1*d1) + 0.62*Math.exp(-d2*d2);
   }
 
   function draw(now){
     var dt = Math.min(0.05, (now - last)/1000); last = now;
     ang += speed * dt;
 
-    var bs = 1;
+    var bv = 0;
     if (beatOn){
-      var x  = ((now/1000) % 1.15)/1.15;
-      var g1 = Math.exp(-Math.pow((x-0.10)/0.050, 2));
-      var g2 = Math.exp(-Math.pow((x-0.30)/0.055, 2));
-      bs = 1 + 0.045*(g1 + 0.55*g2);
+      bv = beatAt(now/1000);
+      if (bv > 0.5 && prevBeat <= 0.5) puffPending = 1;   // 心跳的冲击瞬间
     }
+    prevBeat = bv;
+    var bs = 1 + 0.095*bv;                                // 整颗心跟着心跳胀缩
 
     ctx.globalCompositeOperation = 'source-over';
     ctx.fillStyle = 'rgba(4,1,5,0.26)';
     ctx.fillRect(0, 0, W, H);
+
     ctx.globalCompositeOperation = 'lighter';
-    if (GLOW){ ctx.fillStyle = GLOW; ctx.fillRect(0, 0, W, H); }
+    if (GLOW){
+      ctx.globalAlpha = 0.5 + 0.9*bv;                     // 光晕跟着心跳一起亮
+      ctx.fillStyle = GLOW;
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalAlpha = 1;
+    }
 
     var ca = Math.cos(ang), sa = Math.sin(ang);
     var ct = Math.cos(TILT), st = Math.sin(TILT);
     var on = pointer.on, mx = pointer.x, my = pointer.y, rep = REP*DPR;
+    var puff = puffPending; puffPending = 0;
 
     for (var i=0; i<P.length; i++){
       var p  = P[i];
@@ -260,6 +275,12 @@
         if (Math.abs(p.ox) < 0.01) p.ox = 0;
         if (Math.abs(p.oy) < 0.01) p.oy = 0;
       }
+      if (puff){                                          // 心跳那一下向外一推
+        var bx = sx - cx, by = sy - cy;
+        var bd = Math.sqrt(bx*bx + by*by) || 1;
+        p.ox += bx/bd * 5.5;
+        p.oy += by/bd * 5.5;
+      }
       if (on){
         var dx = sx - mx, dy = sy - my, d2 = dx*dx + dy*dy;
         if (d2 < rep*rep){
@@ -272,16 +293,10 @@
 
       var d  = 0.5 - Z2/34;
       d = d < 0 ? 0 : (d > 1 ? 1 : d);
-      var s  = p.s * U * persp;
-      if (s < 1) s = 1;
+      var box = p.s * U * persp * 2.3;
+      if (box < 2) box = 2;
 
-      ctx.fillStyle = PAL[p.k][p.hi][(d*(NB-1))|0];
-      ctx.fillRect(sx - s*0.5, sy - s*0.5, s, s);
-
-      if (d > 0.88 && s > 2.4){
-        ctx.fillStyle = BLOOM;
-        ctx.fillRect(sx - s*1.6, sy - s*1.6, s*3.2, s*3.2);
-      }
+      ctx.drawImage(SPR[p.k][p.hi][(d*(NDB-1))|0], sx - box*0.5, sy - box*0.5, box, box);
     }
     requestAnimationFrame(draw);
   }
@@ -310,7 +325,6 @@
 
   var cntEl = document.getElementById('cnt'), cntv = document.getElementById('cntv');
   var spdEl = document.getElementById('spd'), spdv = document.getElementById('spdv');
-  var msgEl = document.getElementById('msg');
   var beatEl = document.getElementById('beat');
   var segEl = document.getElementById('seg');
 
@@ -328,16 +342,13 @@
     spdv.textContent = speed.toFixed(2);
   });
   beatEl.addEventListener('change', function(){ beatOn = beatEl.checked; });
-  msgEl.addEventListener('input', function(){
-    cap.textContent = msgEl.value.trim().slice(0, 14);
-  });
   segEl.addEventListener('click', function(e){
     var b = e.target.closest('button');
     if (!b) return;
     theme = b.getAttribute('data-th');
     Array.prototype.forEach.call(segEl.children, function(el){ el.classList.toggle('on', el === b); });
     for (var i=0; i<P.length; i++) P[i].hi = hueIdxFor(P[i]);
-    buildPalette();
+    buildSprites();
   });
 
   var rt = null;

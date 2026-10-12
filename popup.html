@@ -4,43 +4,79 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0c0f16">
-<title>弹窗爱心 · 万事胜意</title>
+<title>弹窗爱心 · 想对你说</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='88'%3E%F0%9F%92%97%3C/text%3E%3C/svg%3E">
 <style>
   *{box-sizing:border-box}
   html,body{height:100%;margin:0}
   body{
-    overflow:hidden;background:#0c0f16;color:#e8ecf4;
+    overflow:hidden;background:#0b0e15;color:#e8ecf4;
     font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
     background-image:
-      radial-gradient(circle at 50% 44%, rgba(96,132,220,.18), rgba(12,15,22,0) 62%),
+      radial-gradient(circle at 50% 44%, rgba(120,150,230,.16), rgba(11,14,21,0) 62%),
       radial-gradient(rgba(255,255,255,.05) 1px, rgba(0,0,0,0) 1px);
     background-size:100% 100%,24px 24px;
     -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
   }
+  /* 心形后面的一层柔光 */
+  #aura{
+    position:fixed;left:50%;top:50%;width:70vmin;height:70vmin;transform:translate(-50%,-50%);
+    background:radial-gradient(circle, rgba(255,110,165,.20), rgba(255,110,165,.05) 45%, rgba(0,0,0,0) 70%);
+    pointer-events:none;
+  }
   #stage{position:fixed;inset:0;transform-origin:50% 50%;will-change:transform}
+
+  /* ---------- 窗口 ---------- */
   .win{
     position:absolute;left:0;top:0;width:var(--w);height:var(--h);
-    background:#fff;border-radius:3px;transform-origin:50% 50%;
-    box-shadow:0 14px 28px rgba(0,0,0,.5),0 2px 6px rgba(0,0,0,.35),inset 0 0 0 1px rgba(255,255,255,.55);
-    will-change:transform,opacity;
+    border-radius:var(--r);overflow:hidden;background:#fff;
+    transform-origin:50% 50%;will-change:transform,opacity;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,.55) inset,
+      0 14px 30px rgba(0,0,0,.42),
+      0 3px 8px rgba(0,0,0,.28);
+  }
+  .win.hot{
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,.85) inset,
+      0 16px 34px rgba(0,0,0,.45),
+      0 0 22px rgba(255,140,190,.75);
   }
   .tb{
-    height:var(--tbh);display:flex;align-items:center;gap:var(--g);padding:0 var(--g);
-    background:linear-gradient(#fff,#f1f1f1);border-bottom:1px solid rgba(0,0,0,.08);
-    border-radius:3px 3px 0 0;color:#5a5f66;font-size:var(--fs);line-height:1;overflow:hidden;
+    height:var(--tbh);display:flex;align-items:center;gap:var(--g);
+    padding:0 calc(var(--g)*1.3);
+    background:linear-gradient(#ffffff,#f3f4f7);
+    border-bottom:1px solid rgba(0,0,0,.06);
   }
-  .tb .ico{color:#e8618c;flex:none}
-  .tb .ttl{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#4a4f57;opacity:.85}
-  .tb svg{flex:none;display:block;opacity:.72}
+  .dots{display:flex;gap:calc(var(--g)*.8);flex:none}
+  .dots i{width:var(--dot);height:var(--dot);border-radius:50%;display:block}
+  .dots i:nth-child(1){background:#ff5f57}
+  .dots i:nth-child(2){background:#febc2e}
+  .dots i:nth-child(3){background:#28c840}
+  .tb .tl{flex:1;text-align:right;font-size:var(--fs2);color:#b9bfc9;line-height:1}
+  /* 窗口是一层压一层贴过去的，每扇只露出靠后的那一条。
+     文字左对齐，让每句话的开头正好落在露出来的部分里。 */
   .bd{
-    height:calc(100% - var(--tbh));background:var(--c);display:flex;align-items:center;justify-content:center;
-    border-radius:0 0 3px 3px;font-size:var(--fs);color:rgba(70,60,70,.92);letter-spacing:.06em;
+    height:calc(100% - var(--tbh));display:flex;align-items:center;justify-content:flex-start;
+    padding:0 3px 0 6px;text-align:left;line-height:1.2;
+    background:linear-gradient(165deg,var(--c1),var(--c2));
+    color:var(--ct);font-size:var(--fs);font-weight:600;letter-spacing:.02em;
+    white-space:nowrap;overflow:hidden;
   }
-  .win.center{
-    box-shadow:0 20px 44px rgba(0,0,0,.6),0 0 38px rgba(255,110,165,.5),inset 0 0 0 1px rgba(255,255,255,.75);
+  .win.main .bd{
+    background:linear-gradient(165deg,#ffffff,#fff3f8);
+    color:#2b2028;font-weight:700;letter-spacing:.1em;
+    font-size:var(--fs);
+    justify-content:center;text-align:center;white-space:normal;padding:0 8px;
   }
-  .win.center .bd{background:#fff;color:#171b21;font-weight:600;letter-spacing:.16em}
+  .win.main{
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,.9) inset,
+      0 22px 48px rgba(0,0,0,.5),
+      0 0 44px rgba(255,110,165,.55);
+  }
+
+  /* ---------- 控件 ---------- */
   .hint{
     position:fixed;left:0;right:0;top:18px;text-align:center;z-index:5;
     color:#66748e;font-size:12px;letter-spacing:.14em;pointer-events:none;
@@ -49,15 +85,14 @@
     position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:99999;
     display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px;
     max-width:calc(100vw - 24px);padding:8px 12px 8px 16px;border-radius:24px;
-    background:rgba(18,22,32,.74);border:1px solid rgba(255,255,255,.13);
+    background:rgba(18,22,32,.76);border:1px solid rgba(255,255,255,.13);
     backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
     box-shadow:0 10px 30px rgba(0,0,0,.45);font-size:13px;
   }
   .hud .heart{color:#ff6fa5}
   .hud input{
-    width:9.5em;padding:6px 11px;border-radius:999px;border:1px solid rgba(255,255,255,.16);
-    background:rgba(255,255,255,.07);color:#fff;font-size:13px;outline:none;
-    font-family:inherit;
+    width:10.5em;padding:6px 11px;border-radius:999px;border:1px solid rgba(255,255,255,.16);
+    background:rgba(255,255,255,.07);color:#fff;font-size:13px;outline:none;font-family:inherit;
   }
   .hud input:focus{border-color:rgba(255,111,165,.7)}
   .hud button{
@@ -67,20 +102,54 @@
   .hud button:hover{background:rgba(255,111,165,.32)}
   .hud a{color:#9aa6bd;text-decoration:none;padding:0 4px;white-space:nowrap}
   .hud a:hover{color:#fff}
-  body.preview .hud,body.preview .hint{display:none}
+
+  .panel{
+    position:fixed;left:50%;bottom:78px;transform:translateX(-50%) translateY(8px);z-index:99998;
+    width:min(560px,calc(100vw - 24px));padding:14px 16px 12px;border-radius:18px;
+    background:rgba(18,22,32,.9);border:1px solid rgba(255,255,255,.13);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    box-shadow:0 18px 50px rgba(0,0,0,.5);
+    opacity:0;pointer-events:none;transition:opacity .22s,transform .22s;
+  }
+  body.editing .panel{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
+  .panel h4{margin:0 0 8px;font-size:12px;font-weight:500;color:#8e9bb3;letter-spacing:.08em}
+  .panel textarea{
+    width:100%;height:132px;resize:vertical;padding:10px 12px;border-radius:12px;
+    border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#eef2f8;
+    font-family:inherit;font-size:13px;line-height:1.7;outline:none;
+  }
+  .panel textarea:focus{border-color:rgba(255,111,165,.6)}
+  .panel .pf{display:flex;justify-content:flex-end;margin-top:8px}
+  .panel .pf button{
+    padding:5px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.16);cursor:pointer;
+    background:transparent;color:#9aa6bd;font-size:12px;font-family:inherit;
+  }
+  .panel .pf button:hover{color:#fff;border-color:rgba(255,255,255,.3)}
+
+  body.preview .hud,body.preview .hint,body.preview .panel{display:none}
   @media (max-width:560px){
     .hud{gap:6px;padding:7px 10px;font-size:12px}
     .hud input{width:6.5em}
+    .panel{bottom:96px}
   }
 </style>
 </head>
 <body>
+<div id="aura"></div>
 <div id="stage"></div>
-<div class="hint" id="hint">点击画面，让爱心重新拼一次</div>
+<div class="hint" id="hint">一个一个贴上去，贴成一颗心</div>
+
+<div class="panel" id="panel">
+  <h4>每行一句，依次贴到窗口上</h4>
+  <textarea id="list" spellcheck="false"></textarea>
+  <div class="pf"><button id="reset">恢复默认</button></div>
+</div>
+
 <div class="hud">
   <span class="heart">&#9829;</span>
-  <input id="msg" value="万事胜意" maxlength="12" aria-label="想说的话">
-  <button id="again">重新拼一次</button>
+  <input id="msg" value="你值得所有美好" maxlength="14" aria-label="中间那扇窗口的话">
+  <button id="again">重新贴一次</button>
+  <button id="toggle">语录</button>
   <a href="./">返回</a>
 </div>
 
@@ -91,136 +160,166 @@
 
   var stage = document.getElementById('stage');
   var hintEl = document.getElementById('hint');
-  var msgEl = document.getElementById('msg');
-  var PALETTE = ['#f7b8c6','#f6d9a9','#f0eaa8','#b6e2c5','#b3d6f0','#c7bcef','#f5c5e4','#a9dfda'];
-  var wins = [], S = 1, cx = 0, cy = 0, t0 = performance.now()/1000;
+  var msgEl  = document.getElementById('msg');
+  var listEl = document.getElementById('list');
 
-  // 经典心形参数方程，+1.5 让图形在竖直方向居中
+  // [浅色, 深色, 文字色]
+  var PALETTE = [
+    ['#ffe1eb','#ffc0d5','#8a3a58'],
+    ['#ffeee0','#ffd2ac','#8a5124'],
+    ['#fffad2','#ffeaa0','#7c6520'],
+    ['#e4f9de','#bfecb4','#3c6b32'],
+    ['#dcefff','#b2d8f7','#2c5a80'],
+    ['#e8e4ff','#c7beff','#4a3d86'],
+    ['#ffe4f7','#ffc0e9','#8a3a74'],
+    ['#dbf7f3','#ace9e1','#2b6b62']
+  ];
+
+  var DEFAULT_LIST = [
+    '你真好看','遇见你真好','你超厉害','你笑起来好看','有你在真好','你比星星亮',
+    '你超温柔','你值得最好','你真的很棒','你要天天开心','今天也想你','喜欢你没道理',
+    '你是人间理想','你是我的好运','你辛苦啦','抱抱你','你最好看了','想一直陪着你',
+    '你是我的偏爱','你最可爱','和你在一起真好','谢谢你出现','你是我全部浪漫',
+    '万事胜意','平安喜乐','岁岁欢喜','顺遂无忧','所愿皆成'
+  ];
+
+  var wins = [], S = 1, cx = 0, cy = 0, t0 = performance.now()/1000;
+  var texts = DEFAULT_LIST.slice();
+  var placeEnd = 4, placeDt = 0.032, placeStart = 0.35;
+
   function heartPoint(t){
     var s = Math.sin(t), c = Math.cos(t);
-    var x = 16 * s * s * s;
-    var y = 13 * c - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t) + 1.5;
-    return [x, y];
+    return [16*s*s*s, 13*c - 5*Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t) + 2];
   }
-  function easeOutCubic(p){ return 1 - Math.pow(1-p, 3); }
 
-  // 按弧长均匀取点。参数 t 均匀采样时，尖点附近 x 是 t 的三次方，
-  // 一大串窗口会挤在同一个位置上堆成一坨，所以先建弧长表再等距取点。
-  var ARC_N = 2400, ARC = [], ARC_TOTAL = 0;
+  // 按弧长均匀取点：参数 t 均匀采样时，尖点附近 x 是 t 的三次方，
+  // 一大串窗口会挤在同一个位置上堆成一坨。
+  var ARC_N = 2400, ARC_P = null, ARC_CUM = null, ARC_TOTAL = 0;
   function buildArc(){
-    ARC = new Array(ARC_N + 1);
-    var k, prev, d;
-    for (k=0; k<=ARC_N; k++) ARC[k] = heartPoint(k/ARC_N * Math.PI*2);
-    var cum = new Array(ARC_N + 1); cum[0] = 0;
+    ARC_P = new Array(ARC_N+1);
+    ARC_CUM = new Array(ARC_N+1);
+    var k;
+    for (k=0; k<=ARC_N; k++) ARC_P[k] = heartPoint(k/ARC_N * Math.PI*2);
+    ARC_CUM[0] = 0;
     for (k=1; k<=ARC_N; k++){
-      var dx = ARC[k][0] - ARC[k-1][0], dy = ARC[k][1] - ARC[k-1][1];
-      cum[k] = cum[k-1] + Math.sqrt(dx*dx + dy*dy);
+      var dx = ARC_P[k][0]-ARC_P[k-1][0], dy = ARC_P[k][1]-ARC_P[k-1][1];
+      ARC_CUM[k] = ARC_CUM[k-1] + Math.sqrt(dx*dx + dy*dy);
     }
-    ARC_TOTAL = cum[ARC_N];
-    ARC = {p: ARC, cum: cum};
+    ARC_TOTAL = ARC_CUM[ARC_N];
   }
   function atArc(s){
-    var cum = ARC.cum, p = ARC.p, n = ARC_N;
     s = ((s % ARC_TOTAL) + ARC_TOTAL) % ARC_TOTAL;
-    var lo = 0, hi = n;
-    while (lo < hi - 1){
+    var lo = 0, hi = ARC_N;
+    while (lo < hi-1){
       var mid = (lo + hi) >> 1;
-      if (cum[mid] <= s) lo = mid; else hi = mid;
+      if (ARC_CUM[mid] <= s) lo = mid; else hi = mid;
     }
-    var seg = cum[hi] - cum[lo] || 1;
-    var f = (s - cum[lo]) / seg;
-    return [p[lo][0] + (p[hi][0]-p[lo][0])*f, p[lo][1] + (p[hi][1]-p[lo][1])*f];
+    var seg = ARC_CUM[hi] - ARC_CUM[lo] || 1;
+    var f = (s - ARC_CUM[lo]) / seg;
+    return [ARC_P[lo][0] + (ARC_P[hi][0]-ARC_P[lo][0])*f,
+            ARC_P[lo][1] + (ARC_P[hi][1]-ARC_P[lo][1])*f];
   }
 
-  function titleBar(fs){
-    var w = Math.round(fs*2.4), h = Math.round(fs*0.62);
-    return '<div class="tb"><span class="ico">&#9829;</span><span class="ttl"></span>' +
-      '<svg width="'+w+'" height="'+h+'" viewBox="0 0 52 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">' +
-      '<line x1="1" y1="7" x2="11" y2="7"/>' +
-      '<rect x="20" y="1.5" width="11" height="11" rx="1.5"/>' +
-      '<path d="M40 1.5 L51 12.5 M51 1.5 L40 12.5"/></svg></div>';
-  }
+  function easeOutBack(p){ var c1 = 1.1, c3 = c1 + 1; return 1 + c3*Math.pow(p-1,3) + c1*Math.pow(p-1,2); }
+  function clamp01(v){ return v < 0 ? 0 : (v > 1 ? 1 : v); }
 
-  function makeWin(w, h, tbh, fs, cls){
+  function makeWin(w, h, cls){
+    var tbh = Math.max(9, h*0.30);
     var el = document.createElement('div');
     el.className = 'win' + (cls ? ' ' + cls : '');
-    el.style.setProperty('--w', w + 'px');
-    el.style.setProperty('--h', h + 'px');
-    el.style.setProperty('--tbh', tbh + 'px');
-    el.style.setProperty('--fs', fs + 'px');
-    el.style.setProperty('--g', Math.max(3, Math.round(w*0.05)) + 'px');
-    el.style.marginLeft = (-w/2) + 'px';
-    el.style.marginTop  = (-h/2) + 'px';
+    el.style.setProperty('--w', w.toFixed(1) + 'px');
+    el.style.setProperty('--h', h.toFixed(1) + 'px');
+    el.style.setProperty('--r', Math.max(4, w*0.10).toFixed(1) + 'px');
+    el.style.setProperty('--tbh', tbh.toFixed(1) + 'px');
+    el.style.setProperty('--g', Math.max(2.5, w*0.045).toFixed(1) + 'px');
+    el.style.setProperty('--dot', Math.max(2.4, h*0.075).toFixed(1) + 'px');
+    el.style.setProperty('--fs', Math.max(7, h*0.26).toFixed(1) + 'px');
+    el.style.setProperty('--fs2', Math.max(6, h*0.16).toFixed(1) + 'px');
+    el.style.marginLeft = (-w/2).toFixed(1) + 'px';
+    el.style.marginTop  = (-h/2).toFixed(1) + 'px';
+    el.innerHTML = '<div class="tb"><span class="dots"><i></i><i></i><i></i></span>' +
+                   '<span class="tl">&#9829;</span></div><div class="bd"></div>';
     return el;
   }
 
   function build(){
     var vw = innerWidth, vh = innerHeight;
-    var heartW = Math.min(vw * (vw < 680 ? 0.92 : 0.80), vh * (PREVIEW ? 0.74 : 0.86));
+    var heartW = Math.min(vw * (vw < 680 ? 0.94 : 0.78), vh * (PREVIEW ? 0.74 : 0.84));
     S  = heartW / 32;
     cx = Math.round(vw/2);
     cy = Math.round(vh/2 - (PREVIEW ? 0 : vh*0.015));
 
-    var N   = PREVIEW ? 56 : (vw < 680 ? 64 : 96);
-    var w   = Math.max(30, 4.7*S);
-    var h   = Math.max(18, 3.15*S);
-    var tbh = Math.max(8, Math.round(h*0.32));
-    var fs  = Math.max(7, Math.round(h*0.26));
+    var w = Math.max(26, 4.2*S);
+    var h = Math.max(15, 1.9*S);
+    // 两圈窗口铺出有厚度的带子。每圈按「间距 ≈ 0.55 个窗口宽」来定数量：
+    // 重叠太多的话每扇只剩一条缝，写在上面的字就全被压住了。
+    var perRing = Math.max(9, Math.round(ARC_TOTAL * S / (w * 0.55)));
+    if (PREVIEW) perRing = Math.min(perRing, 18);
 
     stage.innerHTML = '';
     wins = [];
     var frag = document.createDocumentFragment();
 
-    var step = ARC_TOTAL / N, half = step * 0.22, gap = step * 0.5;
-    for (var i=0; i<N; i++){
-      // 错开半个步长，避免正好落在 t=0 的尖点上
-      var s = (i + 0.5) * step;
-      // 顶部凹陷与底部心尖是两个尖点，切线在那里会翻转。落得太近的窗口直接跳过：
-      // 窗口之间本来就有好几层重叠，留个小空档反而干净。
-      var cuspDist = Math.min(Math.min(s, ARC_TOTAL - s), Math.abs(s - ARC_TOTAL/2));
-      if (cuspDist < gap) continue;
-      var pt = atArc(s);
-      var tx = cx + pt[0]*S, ty = cy - pt[1]*S;
+    for (var ring=0; ring<2; ring++){
+      var step = ARC_TOTAL / perRing, half = step * 0.22, gap = step * 0.58;
+      var offBase = (ring ? 1 : -1) * h * 0.48;   // 外圈往外挪半格，内圈往里挪半格
 
-      // 窗口长边沿着心形曲线的切线方向
-      var a = atArc(s - half), b = atArc(s + half);
-      var rot = Math.atan2(-(b[1]-a[1]), (b[0]-a[0])) * 180/Math.PI;
+      for (var i=0; i<perRing; i++){
+        var s = (i + 0.5 + (ring ? 0.5 : 0)) * step;
+        // 顶部凹陷与底部心尖是尖点，切线在那里会翻转，落得太近的窗口直接跳过
+        var cuspDist = Math.min(Math.min(s, ARC_TOTAL - s), Math.abs(s - ARC_TOTAL/2));
+        if (cuspDist < gap) continue;
+        var pt = atArc(s);
+        var px = cx + pt[0]*S, py = cy - pt[1]*S;
 
-      // 尖点附近曲线很陡，整扇窗口摆在那里会有半个身子探进心形空腔。
-      // 越靠近尖点缩得越小，看上去就像丝带在急转弯处收窄。
-      var k = 1 - 0.40 * Math.exp(-Math.pow(cuspDist/(step*2.4), 2));
-      var el = makeWin(w*k, h*k, Math.max(8, tbh*k), Math.max(7, fs*k));
-      el.innerHTML = titleBar(fs) + '<div class="bd" style="--c:'+PALETTE[i % PALETTE.length]+'"></div>';
-      el.style.zIndex = String(10 + i);
+        var a = atArc(s - half), b = atArc(s + half);
+        var rad = Math.atan2(-(b[1]-a[1]), (b[0]-a[0]));
 
-      var dx = tx-cx, dy = ty-cy;
-      var rec = {
-        el: el, tx: tx, ty: ty, rot: rot, ph: Math.random()*6.283,
-        fx: cx + dx*2.4 + (Math.random()*2-1)*60,
-        fy: cy + dy*2.4 + (Math.random()*2-1)*60,
-        spin: (Math.random()*2-1)*110,
-        delay: i*0.016 + Math.random()*0.06,
-        hover: false, op: -1
-      };
-      el.addEventListener('mouseenter', function(){ rec.hover = true; });
-      el.addEventListener('mouseleave', function(){ rec.hover = false; });
-      wins.push(rec);
-      frag.appendChild(el);
+        // 尖点附近曲线很陡，而且两条分支贴得很近，两圈窗口会在那里交叉成一堆。
+        // 越靠近尖点：窗口缩得越小、两圈越往中线并拢，像丝带收口。
+        var near = Math.exp(-Math.pow(cuspDist/(step*2.2), 2));
+        if (ring === 1 && near > 0.72) continue;     // 内圈并到中线后就和外圈重合了
+
+        // 沿法线往心形里侧/外侧挪，两圈正好拼成一条厚带子
+        var nx = -Math.sin(rad), ny = Math.cos(rad);
+        if (nx*(cx-px) + ny*(cy-py) < 0){ nx = -nx; ny = -ny; }
+        var off = offBase * (1 - 0.85*near);
+        var tx = px + nx*off, ty = py + ny*off;
+
+        var k = 1 - 0.30 * near;
+        var el = makeWin(w*k, h*k);
+        el.style.zIndex = String(10 + wins.length);
+
+        var pal = PALETTE[(i + ring*3) % PALETTE.length];
+        var bd = el.querySelector('.bd');
+        bd.style.setProperty('--c1', pal[0]);
+        bd.style.setProperty('--c2', pal[1]);
+        bd.style.setProperty('--ct', pal[2]);
+
+        var rec = {
+          el: el, bd: bd, tx: tx, ty: ty,
+          rot: rad * 180/Math.PI, rad: rad,
+          ph: Math.random()*6.283,
+          delay: placeStart + wins.length * placeDt,
+          slide: step * 1.5,
+          hover: false, op: -1, hot: false
+        };
+        el.addEventListener('mouseenter', function(){ rec.hover = true; });
+        el.addEventListener('mouseleave', function(){ rec.hover = false; });
+        wins.push(rec);
+        frag.appendChild(el);
+      }
     }
 
-    // 中间那扇写着心里话的窗口
-    var cw = Math.max(58, 6.6*S), ch = Math.max(34, 3.7*S);
-    var cwin = makeWin(cw, ch, Math.max(9, Math.round(ch*0.30)), Math.max(8, Math.round(ch*0.23)), 'center');
-    cwin.innerHTML = '<div class="tb"><span class="ico">&#9829;</span><span class="ttl"></span>' +
-      '<svg width="'+Math.round(ch*0.55)+'" height="'+Math.round(ch*0.14)+'" viewBox="0 0 52 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">' +
-      '<line x1="1" y1="7" x2="11" y2="7"/><rect x="20" y="1.5" width="11" height="11" rx="1.5"/>' +
-      '<path d="M40 1.5 L51 12.5 M51 1.5 L40 12.5"/></svg></div>' +
-      '<div class="bd" id="ctext"></div>';
+    // 中间那扇主窗口
+    var cw = Math.max(70, 9.5*S), ch = Math.max(38, 3.8*S);
+    var cwin = makeWin(cw, ch, 'main');
+    cwin.style.setProperty('--fs', Math.max(9, ch*0.28).toFixed(1) + 'px');
     cwin.style.zIndex = '9999';
     var crec = {
-      el: cwin, tx: cx, ty: cy - S*1.1, rot: 0, ph: 1.7,
-      fx: cx, fy: cy + Math.max(240, vh*0.5), spin: 18, delay: 1.5,
-      hover: false, op: -1
+      el: cwin, bd: cwin.querySelector('.bd'), tx: cx, ty: cy - S*1.1, rot: 0, rad: 0,
+      ph: 1.7, delay: placeStart + wins.length*placeDt + 0.18, slide: 26,
+      hover: false, op: -1, hot: false, isMain: true
     };
     cwin.addEventListener('mouseenter', function(){ crec.hover = true; });
     cwin.addEventListener('mouseleave', function(){ crec.hover = false; });
@@ -228,35 +327,65 @@
     frag.appendChild(cwin);
 
     stage.appendChild(frag);
+
+    placeEnd = crec.delay + 0.5;
+    applyTexts();
     applyMsg();
-    if (hintEl) hintEl.textContent = '点击画面，让爱心重新拼一次 · 共 ' + N + ' 个窗口';
+    if (hintEl) hintEl.textContent = '一个一个贴上去，贴成一颗心 · 共 ' + (wins.length - 1) + ' 个窗口';
+  }
+
+  function applyTexts(){
+    var n = texts.length;
+    var lap = Math.max(1, Math.floor(n/3));
+    for (var i=0; i<wins.length; i++){
+      if (wins[i].isMain) continue;
+      var idx = (i + Math.floor(i/n)*lap) % n;
+      wins[i].bd.textContent = texts[idx];
+    }
+  }
+
+  function applyMsg(){
+    var m = (msgEl.value || '').trim().slice(0, 14) || '你值得所有美好';
+    for (var i=0; i<wins.length; i++){
+      if (wins[i].isMain) wins[i].bd.textContent = m;
+    }
+    document.title = '弹窗爱心 · ' + m;
   }
 
   function frame(now){
     var t = now/1000 - t0;
+
+    // 贴完之后整颗心开始按两拍心跳缩放
+    var amp = 0.05 * clamp01((t - placeEnd) / 0.9);
     var x = (t % 1.15) / 1.15;
-    var g = function(c, s){ var d = (x-c)/s; return Math.exp(-d*d); };
-    var pulse = 1 + 0.042 * (g(0.10,0.05) + 0.55*g(0.30,0.055));
-    stage.style.transform = 'scale(' + pulse.toFixed(4) + ')';
+    var g1 = Math.exp(-Math.pow((x-0.10)/0.050, 2));
+    var g2 = Math.exp(-Math.pow((x-0.30)/0.055, 2));
+    stage.style.transform = 'scale(' + (1 + amp*(g1 + 0.55*g2)).toFixed(4) + ')';
 
     for (var i=0; i<wins.length; i++){
       var wk = wins[i];
-      var p = (t - wk.delay) / 0.62;
-      p = p < 0 ? 0 : (p > 1 ? 1 : p);
-      var e = easeOutCubic(p);
-      var px = wk.fx + (wk.tx - wk.fx) * e;
-      var py = wk.fy + (wk.ty - wk.fy) * e;
-      var rot = wk.rot + (1-e) * wk.spin;
-      var pop = 1 + 0.10 * Math.sin(Math.PI * Math.min(1, Math.max(0, (p-0.72)/0.28)));
-      var sc = (0.4 + 0.6*e) * pop * (wk.hover ? 1.09 : 1);
+      var p = clamp01((t - wk.delay) / 0.42);
+      var e = easeOutBack(p);
+
+      // 沿着轨迹滑到位：从上一个窗口的位置顺着切线贴过来
+      var back = (1 - e) * wk.slide;
+      var px = wk.tx - Math.cos(wk.rad) * back;
+      var py = wk.ty - Math.sin(wk.rad) * back;
+
       var jx = Math.sin(t*0.9  + wk.ph) * 1.3;
       var jy = Math.cos(t*1.15 + wk.ph) * 1.3;
       var jr = Math.sin(t*0.65 + wk.ph) * 1.0;
+      var rot = wk.rot + (1-e)*22 + jr;
+      var sc  = (0.55 + 0.45*e) * (wk.hover ? 1.09 : 1);
 
       wk.el.style.transform = 'translate3d(' + (px+jx).toFixed(1) + 'px,' + (py+jy).toFixed(1) + 'px,0) ' +
-                              'rotate(' + (rot+jr).toFixed(1) + 'deg) scale(' + sc.toFixed(3) + ')';
-      var op = p < 0.25 ? p*4 : 1;
+                              'rotate(' + rot.toFixed(1) + 'deg) scale(' + sc.toFixed(3) + ')';
+      var op = clamp01(p*3.4);
       if (Math.abs(op - wk.op) > 0.02){ wk.el.style.opacity = op.toFixed(2); wk.op = op; }
+
+      // 正在贴的那几个窗口亮一下
+      var hot = p > 0.02 && p < 0.72;
+      if (hot !== wk.hot){ wk.el.classList.toggle('hot', hot); wk.hot = hot; }
     }
     requestAnimationFrame(frame);
   }
@@ -266,24 +395,32 @@
     for (var i=0; i<wins.length; i++){
       var wk = wins[i];
       wk.ph = Math.random()*6.283;
-      wk.spin = (Math.random()*2-1)*110;
-      wk.delay = (wk.delay > 1 ? 1.4 : i*0.012) + Math.random()*0.35;
+      wk.delay = placeStart + i*placeDt;
     }
   }
 
-  function applyMsg(){
-    var m = (msgEl.value || '').trim().slice(0, 12) || '万事胜意';
-    var c = document.getElementById('ctext');
-    if (c) c.textContent = m;
-    document.title = '弹窗爱心 · ' + m;
+  function parseList(){
+    var arr = listEl.value.split('\n')
+      .map(function(s){ return s.trim().slice(0, 12); })
+      .filter(function(s){ return s.length > 0; });
+    texts = arr.length ? arr : DEFAULT_LIST.slice();
+    applyTexts();
   }
 
   document.addEventListener('click', function(e){
-    if (e.target.closest && e.target.closest('.hud')) return;
+    if (e.target.closest && (e.target.closest('.hud') || e.target.closest('.panel'))) return;
     restart();
   });
   document.getElementById('again').addEventListener('click', restart);
+  document.getElementById('toggle').addEventListener('click', function(){
+    document.body.classList.toggle('editing');
+  });
+  document.getElementById('reset').addEventListener('click', function(){
+    listEl.value = DEFAULT_LIST.join('\n');
+    parseList();
+  });
   msgEl.addEventListener('input', applyMsg);
+  listEl.addEventListener('input', parseList);
 
   var rt = null;
   addEventListener('resize', function(){
@@ -291,6 +428,7 @@
     rt = setTimeout(function(){ build(); }, 180);
   });
 
+  listEl.value = DEFAULT_LIST.join('\n');
   buildArc();
   build();
   requestAnimationFrame(frame);
